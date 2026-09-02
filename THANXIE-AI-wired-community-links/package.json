@@ -1,0 +1,20 @@
+{
+  "name": "thanxie-ai",
+  "version": "3.0.0",
+  "description": "THANXIE AI \u2014 Meta WhatsApp Business Platform assistant with 185 registered commands.",
+  "type": "module",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env src/app.js",
+    "dev": "node --env-file-if-exists=.env --watch src/app.js",
+    "test": "node --test",
+    "check": "node --check src/app.js && node --check src/handlers/webhook.js && node --check src/handlers/messages.js && node --check src/services/commands/commandService.js && node --check src/services/meta/metaClient.js && node --check src/services/meta/groupClient.js && node --check src/services/community/groupStatsService.js",
+    "health": "node healthcheck.js"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "sharp": "^0.34.3"
+  }
+}
