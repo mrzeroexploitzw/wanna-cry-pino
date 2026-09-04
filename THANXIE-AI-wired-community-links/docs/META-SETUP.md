@@ -1,6 +1,6 @@
 # THANXIE AI — Meta WhatsApp Business Platform Setup
 
-THANXIE AI uses the official Meta WhatsApp Business Platform only. It does **not** use Baileys, WhatsApp Web automation, QR pairing, fake pairing codes, or WhatsApp OTP collection.
+THANXIE AI uses the official Meta WhatsApp Business Platform / Cloud API for message delivery and group features. The project does **not** use Baileys, WhatsApp Web automation, QR pairing, or unofficial WhatsApp sessions.
 
 ## Core credentials
 
@@ -12,7 +12,44 @@ Set:
 - `META_APP_SECRET`
 - `META_VERIFY_TOKEN`
 
-Subscribe the application to the WABA so webhook notifications are delivered. Meta's official Postman collection documents `POST /<WABA-ID>/subscribed_apps` for this subscription. See the official collection: https://www.postman.com/meta/whatsapp-business-platform/documentation/wlk6lh4/whatsapp-cloud-api
+Subscribe the application to the WABA so webhook notifications are delivered.
+
+## Phone-number pairing / onboarding
+
+The project now includes an **official Meta phone-number onboarding flow**. It is deliberately different from WhatsApp Web pairing.
+
+Enable it with:
+
+```env
+PHONE_PAIRING_ENABLED=true
+PAIRING_ADMIN_TOKEN=<long-random-secret>
+```
+
+The administrative endpoint is:
+
+```text
+GET  /pairing
+POST /pairing
+```
+
+Both endpoints require:
+
+```text
+Authorization: Bearer <PAIRING_ADMIN_TOKEN>
+```
+
+The POST body is:
+
+```json
+{
+  "phone_number": "+2637XXXXXXXX",
+  "pin": "123456"
+}
+```
+
+The service first checks that the phone number already exists in the configured Meta WABA, then uses Meta's registration endpoint for that phone-number ID. The 6-digit PIN is passed to Meta and is not stored in SQLite. Only the phone number, Meta phone-number ID, verified name, and registration status are persisted.
+
+**Important:** this does not turn a normal personal WhatsApp account into a Cloud API session and does not create a WhatsApp-Web-style pairing code. The number must be eligible for Meta's WhatsApp Business Platform onboarding and the required Meta verification/setup must be completed in Meta's systems.
 
 ## Groups API
 
@@ -29,63 +66,50 @@ REGISTRATION_GROUP_ID=<actual Meta group ID>
 
 The group invite URL is only a human-facing onboarding link. The bot must use the actual Meta group ID received from the Groups API/webhooks for enforcement.
 
-Meta documentation currently describes group join requests and approval through the Groups API, including `GET /<GROUP_ID>/join_requests` and `POST /<GROUP_ID>/join_requests`. The project therefore uses join-request IDs, not phone numbers, for approval.
+## Existing bot functionality
+
+The phone onboarding addition leaves the existing bot architecture intact:
+
+- command registry and menus;
+- registration workflow;
+- AI chat and multilingual personalization;
+- group welcome/farewell workflows;
+- moderation and warning system;
+- Pino Pino features;
+- premium controls;
+- media processing and branding;
+- SQLite persistence;
+- Meta webhook verification/signature validation;
+- outbound rate limiting and safety controls;
+- Docker and health/readiness endpoints.
+
+Meta remains the messaging core; no unofficial WhatsApp library is introduced.
+
+## Security
+
+Never commit `PAIRING_ADMIN_TOKEN`, `META_ACCESS_TOKEN`, or other secrets. Use a hosting-provider secret manager/environment variables in production. Rotate the pairing admin token if it is exposed.
 
 ## Registration restriction
 
 Self-registration is accepted **only** when `.register` is received in `REGISTRATION_GROUP_ID`.
 
-The bot rejects registration from:
-
-- private chats
-- unrelated groups
-- other conversations
-
-Users are directed to:
-
-`REGISTRATION_GROUP_LINK`
-
-No manual database account creation is required after deployment.
-
-## Group welcome workflow
-
-For supported `group_participants_update` events, THANXIE AI:
-
-1. Reads available group metadata.
-2. Reads the group description when exposed by the API.
-3. Reads admin information when the webhook/API exposes admin flags.
-4. Sends a branded welcome/rules message tagging the new member.
-5. Sends a separate branded introduction/admin message tagging the member and available admins.
-6. Updates member statistics.
-7. Posts the updated statistics in the group.
-
-## Goodbye workflow
-
-For supported participant-removal/leave events, the bot sends a branded farewell card, tags the departing user when mentions are supported, and displays:
-
-- members remaining
-- total joined
-- total members who have left
+The bot rejects registration from private chats, unrelated groups, and other conversations.
 
 ## Message deletion limitation
 
-The project deliberately does not fake message deletion. Current WhatsApp business group documentation indicates that group message editing/deletion is not available through the official Groups API. Therefore `.antilink`, `.antidelete`, and related protections record violations and warn users, but the bot will not claim it deleted a group message when Meta did not expose that operation.
+The project deliberately does not fake message deletion. Where the official Groups API does not expose an operation, the bot records/warns rather than claiming an unsupported action was completed.
 
 ## View-once limitation
 
-View-once media is not supported in Groups API groups. `.antiviewonce` is retained as a capability-aware policy setting and will not pretend to remove unsupported content.
+View-once media is not supported in Groups API groups. `.antiviewonce` remains capability-aware and does not pretend to remove unsupported content.
 
 ## Media
 
-Inbound media is downloaded through Meta's media endpoints. Outbound image/video/audio/document/sticker media is uploaded to Meta and sent through the official WhatsApp Cloud API media message endpoints.
-
-The supplied THANXIE AI brand artwork is uploaded to Meta on first use when no configured media ID exists. The resulting media ID is cached in SQLite.
-
-The owner-only `.setbotimage` command uploads the new artwork and separately attempts the official WhatsApp Business Profile image workflow. A message-media upload is never treated as a profile-photo update.
+Inbound and outbound media continue to use Meta's official media endpoints. The THANXIE AI brand artwork is cached as a Meta media ID in SQLite.
 
 ## AI
 
-Optional AI responses use the official OpenAI API when configured:
+Optional AI responses use the configured provider. The repository defaults to Google's Gemini configuration:
 
 ```env
 AI_PROVIDER=gemini
@@ -93,25 +117,6 @@ GEMINI_API_KEY=<key>
 GEMINI_MODEL=gemini-2.5-flash-lite
 ```
 
-OpenAI's current model documentation lists GPT-5.6 Luna as a cost-sensitive, high-volume model available through the Responses API.
+## Community links
 
-## Public utility APIs
-
-The project uses simple public HTTPS APIs for non-Meta utilities where appropriate:
-
-- Open-Meteo — weather/geocoding
-- Frankfurter — currency conversion
-- DictionaryAPI — dictionary lookup
-
-These services are isolated from Meta messaging. They never authenticate or pair WhatsApp accounts.
-
-## Community links used by welcome cards
-
-`WHATSAPP_CHANNEL_URL` and `WHATSAPP_GROUP_URL` remain supported as single-link fallbacks. For multiple links, use JSON arrays:
-
-```env
-WHATSAPP_CHANNEL_LINKS=[{"label":"Official Channel","url":"https://whatsapp.com/channel/..."}]
-WHATSAPP_GROUP_LINKS=[{"label":"Main Group","url":"https://chat.whatsapp.com/..."},{"label":"Registration Group","url":"https://chat.whatsapp.com/..."}]
-```
-
-When the official Groups API sends participant events, the bot greets joins, highlights detected admins, includes the channel CTA and labeled community links, and posts a farewell plus membership statistics when someone leaves.
+`WHATSAPP_CHANNEL_URL` and `WHATSAPP_GROUP_URL` remain supported as single-link fallbacks. Multiple links can be supplied through the existing JSON-array environment variables.
