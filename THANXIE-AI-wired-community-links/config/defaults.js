@@ -1,6 +1,6 @@
 export const defaults = {
   botName: process.env.BOT_NAME || 'THANXIE AI',
-  libraryLabel: process.env.LIBRARY_LABEL || 'Meta Muse Spark',
+  libraryLabel: process.env.LIBRARY_LABEL || 'Baileys Personal Pairing',
   developerName: process.env.DEVELOPER_NAME || 'THANXIE',
   developerPhone: process.env.DEVELOPER_PHONE || '',
   channelUrl: process.env.WHATSAPP_CHANNEL_URL || '',

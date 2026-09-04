@@ -1,122 +1,100 @@
-# THANXIE AI — Meta WhatsApp Business Platform Setup
+# THANXIE AI — Personal WhatsApp Pairing Setup
 
-THANXIE AI uses the official Meta WhatsApp Business Platform / Cloud API for message delivery and group features. The project does **not** use Baileys, WhatsApp Web automation, QR pairing, or unofficial WhatsApp sessions.
+THANXIE AI on this branch uses **Baileys** as the active WhatsApp transport. The bot links a normal WhatsApp account through WhatsApp Web-style pairing code and keeps the existing THANXIE command, registration, moderation, community, media, AI and SQLite layers as the application engine.
 
-## Core credentials
+## Pair the personal WhatsApp number
 
 Set:
 
-- `META_ACCESS_TOKEN`
-- `META_PHONE_NUMBER_ID`
-- `META_WABA_ID`
-- `META_APP_SECRET`
-- `META_VERIFY_TOKEN`
-
-Subscribe the application to the WABA so webhook notifications are delivered.
-
-## Phone-number pairing / onboarding
-
-The project now includes an **official Meta phone-number onboarding flow**. It is deliberately different from WhatsApp Web pairing.
-
-Enable it with:
-
 ```env
-PHONE_PAIRING_ENABLED=true
 PAIRING_ADMIN_TOKEN=<long-random-secret>
+BAILEYS_AUTH_DIR=./data/baileys-auth
 ```
 
-The administrative endpoint is:
+Start the bot, then call the protected pairing endpoint:
 
 ```text
-GET  /pairing
 POST /pairing
-```
-
-Both endpoints require:
-
-```text
 Authorization: Bearer <PAIRING_ADMIN_TOKEN>
+Content-Type: application/json
 ```
 
-The POST body is:
+Body:
 
 ```json
 {
-  "phone_number": "+2637XXXXXXXX",
-  "pin": "123456"
+  "phone_number": "+2637XXXXXXXX"
 }
 ```
 
-The service first checks that the phone number already exists in the configured Meta WABA, then uses Meta's registration endpoint for that phone-number ID. The 6-digit PIN is passed to Meta and is not stored in SQLite. Only the phone number, Meta phone-number ID, verified name, and registration status are persisted.
+The response contains the temporary pairing code. On the phone, open WhatsApp → Linked devices → Link a device → enter the pairing code.
 
-**Important:** this does not turn a normal personal WhatsApp account into a Cloud API session and does not create a WhatsApp-Web-style pairing code. The number must be eligible for Meta's WhatsApp Business Platform onboarding and the required Meta verification/setup must be completed in Meta's systems.
+The bot stores the Baileys multi-file authentication state under `BAILEYS_AUTH_DIR`. The directory is ignored by Git and must never be committed or shared.
 
-## Groups API
+Do not send a WhatsApp account OTP, PIN, password or authentication-state files to the bot's API. The pairing endpoint is protected by the administrator bearer token.
 
-THANXIE AI supports the current Meta Groups API architecture where the account is eligible for it. The project listens for group participant updates and can use join-request approval endpoints when the capability is enabled for the account/API version.
+## Conservative behavior safeguards
 
-Set:
+The transport includes a safety layer intended to reduce accidental spammy behavior and unnecessary account risk:
+
+- global outbound message-per-minute limit;
+- per-group outbound limit;
+- per-user response limit;
+- minimum delay between sends;
+- duplicate-message suppression;
+- bounded outbound queue;
+- circuit breaker after selected authentication/rate-limit transport failures;
+- exponential reconnect backoff;
+- inbound duplicate-event suppression;
+- no status/newsletter/broadcast event processing;
+- full WhatsApp history sync disabled;
+- online-presence marking disabled on connection;
+- no bulk DM feature is added by the transport layer.
+
+Default limits are intentionally conservative and can be changed with environment variables. These controls are engineering safeguards, **not a guarantee against WhatsApp restrictions or bans**.
+
+## Environment policy
 
 ```env
-META_GROUPS_API_ENABLED=true
-META_GROUP_JOIN_APPROVAL_ENABLED=true
-META_GROUP_MENTIONS_ENABLED=true
-REGISTRATION_GROUP_ID=<actual Meta group ID>
+WA_GLOBAL_MESSAGES_PER_MINUTE=30
+WA_GROUP_MESSAGES_PER_MINUTE=10
+WA_USER_MESSAGES_PER_MINUTE=6
+WA_MIN_SEND_DELAY_MS=1800
+WA_DUPLICATE_WINDOW_MS=120000
+WA_INBOUND_DEDUP_WINDOW_MS=300000
+WA_MAX_QUEUE=100
+WA_CIRCUIT_BREAK_MS=60000
 ```
 
-The group invite URL is only a human-facing onboarding link. The bot must use the actual Meta group ID received from the Groups API/webhooks for enforcement.
+If the account receives a transport-level restriction, the circuit breaker pauses automated sends rather than repeatedly retrying. The bot also avoids aggressive reconnect loops.
 
-## Existing bot functionality
+## Existing THANXIE functionality
 
-The phone onboarding addition leaves the existing bot architecture intact:
+The application engine remains in place, including:
 
 - command registry and menus;
-- registration workflow;
-- AI chat and multilingual personalization;
-- group welcome/farewell workflows;
-- moderation and warning system;
+- registration and Terms workflow;
+- AI commands and multilingual personalization;
+- group moderation and warning system;
+- group welcome/farewell and membership statistics;
 - Pino Pino features;
 - premium controls;
-- media processing and branding;
-- SQLite persistence;
-- Meta webhook verification/signature validation;
-- outbound rate limiting and safety controls;
-- Docker and health/readiness endpoints.
+- media processing;
+- branding data and SQLite persistence;
+- health/readiness endpoints.
 
-Meta remains the messaging core; no unofficial WhatsApp library is introduced.
+The former Meta transport modules remain in the repository for compatibility with existing application services, but they are **not the active WhatsApp message transport on this branch**.
 
-## Security
+## Important limitation
 
-Never commit `PAIRING_ADMIN_TOKEN`, `META_ACCESS_TOKEN`, or other secrets. Use a hosting-provider secret manager/environment variables in production. Rotate the pairing admin token if it is exposed.
-
-## Registration restriction
-
-Self-registration is accepted **only** when `.register` is received in `REGISTRATION_GROUP_ID`.
-
-The bot rejects registration from private chats, unrelated groups, and other conversations.
-
-## Message deletion limitation
-
-The project deliberately does not fake message deletion. Where the official Groups API does not expose an operation, the bot records/warns rather than claiming an unsupported action was completed.
-
-## View-once limitation
-
-View-once media is not supported in Groups API groups. `.antiviewonce` remains capability-aware and does not pretend to remove unsupported content.
-
-## Media
-
-Inbound and outbound media continue to use Meta's official media endpoints. The THANXIE AI brand artwork is cached as a Meta media ID in SQLite.
+Baileys is an unofficial WhatsApp Web automation library. Using a personal WhatsApp account for automation can carry account, service and policy risk. Rate limiting and conservative behavior can reduce unnecessary automation activity, but cannot make the account ban-proof or reproduce Meta's official business platform behavior.
 
 ## AI
 
-Optional AI responses use the configured provider. The repository defaults to Google's Gemini configuration:
+Optional AI remains configured through the existing provider interface. The repository example uses Gemini:
 
 ```env
 AI_PROVIDER=gemini
 GEMINI_API_KEY=<key>
 GEMINI_MODEL=gemini-2.5-flash-lite
 ```
-
-## Community links
-
-`WHATSAPP_CHANNEL_URL` and `WHATSAPP_GROUP_URL` remain supported as single-link fallbacks. Multiple links can be supplied through the existing JSON-array environment variables.
