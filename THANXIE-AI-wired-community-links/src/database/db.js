@@ -45,7 +45,6 @@ CREATE TABLE IF NOT EXISTS group_settings (group_id TEXT PRIMARY KEY,antisticker
 CREATE TABLE IF NOT EXISTS pino_pino (id INTEGER PRIMARY KEY AUTOINCREMENT,owner_whatsapp_id TEXT NOT NULL,target_whatsapp_id TEXT,display_name TEXT NOT NULL,source TEXT NOT NULL DEFAULT 'manual',relation TEXT NOT NULL DEFAULT 'friend',score REAL NOT NULL DEFAULT 0,created_at TEXT NOT NULL,updated_at TEXT NOT NULL,UNIQUE(owner_whatsapp_id,display_name));
 CREATE TABLE IF NOT EXISTS interactions (id INTEGER PRIMARY KEY AUTOINCREMENT,owner_whatsapp_id TEXT NOT NULL,target_whatsapp_id TEXT NOT NULL,interaction_type TEXT NOT NULL,occurred_at TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS idx_interactions_owner_target ON interactions(owner_whatsapp_id,target_whatsapp_id);
-
 CREATE TABLE IF NOT EXISTS warnings (id INTEGER PRIMARY KEY AUTOINCREMENT,group_id TEXT NOT NULL,user_whatsapp_id TEXT NOT NULL,reason TEXT NOT NULL,message_id TEXT,created_at TEXT NOT NULL,created_by TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS idx_warnings_group_user ON warnings(group_id,user_whatsapp_id);
 CREATE TABLE IF NOT EXISTS bad_words (word TEXT PRIMARY KEY,enabled INTEGER NOT NULL DEFAULT 1,created_at TEXT NOT NULL,updated_at TEXT NOT NULL,updated_by TEXT NOT NULL);
@@ -57,6 +56,8 @@ CREATE TABLE IF NOT EXISTS moderation_events (id INTEGER PRIMARY KEY AUTOINCREME
 CREATE TABLE IF NOT EXISTS group_stats (group_id TEXT PRIMARY KEY,total_members INTEGER NOT NULL DEFAULT 0,joined_count INTEGER NOT NULL DEFAULT 0,left_count INTEGER NOT NULL DEFAULT 0,last_subject TEXT,last_description TEXT,last_admins TEXT,last_updated_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS group_member_events (id INTEGER PRIMARY KEY AUTOINCREMENT,group_id TEXT NOT NULL,user_whatsapp_id TEXT NOT NULL,event_type TEXT NOT NULL,created_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS processed_messages (message_id TEXT PRIMARY KEY, processed_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS phone_pairings (phone_number TEXT PRIMARY KEY,phone_number_id TEXT NOT NULL,verified_name TEXT,status TEXT NOT NULL DEFAULT 'registered',paired_at TEXT NOT NULL,updated_at TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_phone_pairings_phone_id ON phone_pairings(phone_number_id);
 CREATE INDEX IF NOT EXISTS idx_users_inbound ON users(last_inbound_at);
 `);
 
