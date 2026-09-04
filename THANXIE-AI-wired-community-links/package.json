@@ -8,7 +8,7 @@
     "start": "node --env-file-if-exists=.env src/app.js",
     "dev": "node --env-file-if-exists=.env --watch src/app.js",
     "test": "node --test",
-    "check": "node --check src/app.js && node --check src/handlers/webhook.js && node --check src/handlers/messages.js && node --check src/services/whatsapp/baileysClient.js && node --check src/services/whatsapp/behaviorGuard.js && node --check src/services/commands/commandService.js && node --check src/services/meta/metaClient.js && node --check src/services/meta/groupClient.js && node --check src/services/community/groupStatsService.js
+    "check": "node --check src/app.js && node --check src/handlers/webhook.js && node --check src/handlers/messages.js && node --check src/services/whatsapp/baileysClient.js && node --check src/services/whatsapp/behaviorGuard.js && node --check src/services/commands/commandService.js && node --check src/services/meta/metaClient.js && node --check src/services/meta/groupClient.js && node --check src/services/community/groupStatsService.js"
   },
   "engines": { "node": ">=22.0.0" },
   "dependencies": {
